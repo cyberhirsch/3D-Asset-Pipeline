@@ -33,7 +33,7 @@ echo Starting process...
 REM Wait for 30 seconds
 TIMEOUT /T 30
 echo Continuing after 30 seconds...
-python substance_painter_batch.py
+python painter_automate.py
 echo.
 echo STAGE 2 (Substance Painter Processing) COMPLETE.
 echo.
