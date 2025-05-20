@@ -1,0 +1,1 @@
+"C:\Program Files\Adobe\Adobe Substance 3D Painter\Adobe Substance 3D painter.exe" --enable-remote-scripting
