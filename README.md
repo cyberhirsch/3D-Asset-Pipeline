@@ -1,4 +1,4 @@
-# 3D-Asset_Pipeline
+# 3D Asset Pipeline
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
