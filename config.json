@@ -1,0 +1,40 @@
+{
+  "comment": "this is the config.json file for the python files",
+  "global_paths": {
+    "input_base_folder": "E:\\Projects\\2025\\SpaceshipKitbash\\Input",
+    "processed_objs_folder": "E:\\Projects\\2025\\SpaceshipKitbash\\Meshes",
+    "painter_output_base_folder": "E:\\Projects\\2025\\SpaceshipKitbash\\Output"
+  },
+  "blender_settings": {
+    "executable_path_windows": "C:\\Program Files\\Blender Foundation\\Blender 4.3\\blender.exe",
+    "executable_path_macos": "/Applications/Blender.app/Contents/MacOS/Blender",
+    "executable_path_linux": "blender",
+    "script_params": {
+      "decimate_ratio": 0.1,
+      "sp_angle_degrees": 20.0,
+      "sp_island_margin": 0.000,
+      "sp_area_weight": 0.0,
+      "sp_correct_aspect": true,
+      "sp_scale_to_bounds": false,
+      "sp_margin_method": "SCALED",
+      "sp_rotate_method": "AXIS_ALIGNED_Y",
+      "uv_fill_holes": false,
+      "scale_factor": 100.0,
+      "apply_scale": true
+    }
+  },
+  "painter_settings": {
+    "executable_path_windows": "C:\\Program Files\\Adobe\\Adobe Substance 3D Painter\\Adobe Substance 3D painter.exe",
+    "smart_material_name": "HullTextureColor",
+    "smart_material_location": "Yourassets",
+    "bakers_to_enable": [
+      "Normal",
+      "AO",
+      "Curvature",
+      "Position",
+      "Thickness",
+      "WorldSpaceNormal"
+    ]
+
+  }
+}
