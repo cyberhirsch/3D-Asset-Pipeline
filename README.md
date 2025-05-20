@@ -1,94 +1,245 @@
-# 3D Asset Processing & Texturing Automation Pipeline
+# 3D-Asset_Pipeline
 
-This repository contains a set of Python scripts designed to automate common tasks in a 3D asset creation workflow, from mesh preparation in Blender to texturing in Substance Painter.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+This project provides a suite of Python scripts to automate a 3D asset processing pipeline. It takes raw OBJ files, processes them in Blender (scaling, decimation, UV unwrapping, high/low poly export), and then textures them in Adobe Substance 3D Painter (project creation, smart material application, baking, texture export).
 
-The pipeline consists of three main scripts:
+The entire workflow is configured via a central `config.json` file and can be orchestrated using the provided Python scripts or the sample Windows batch file.
 
-1.  **`blender_decimate_unwrap.py`**: A Blender script for mesh processing.
-2.  **`process_assets.py`**: A Python script to batch process assets using the Blender script.
-3.  **`painter_automate_open_rename_material_bake_export_save.py`**: A Python script to automate texturing tasks in Adobe Substance Painter.
+## Features
 
-## Scripts
-
-### 1. `blender_decimate_unwrap.py`
-
-*   **Purpose**: Automates mesh processing tasks within Blender. This script is intended to be called by Blender's Python interpreter via the command line (e.g., in background mode).
-*   **Key Functions**:
-    *   Imports an `.obj` mesh.
-    *   Optionally applies object scale.
-    *   Applies a **Decimate** modifier (Collapse mode) to reduce polygon count based on a given ratio.
+*   **Batch Processing:** Process multiple assets automatically.
+*   **Blender Automation (`process_assets.py` & `blender_decimate_unwrap.py`):**
+    *   Copies original OBJ files to a working directory.
+    *   Scales models.
+    *   Applies existing model scale if specified.
+    *   Exports a scaled, pre-decimation version as `_high.obj`.
+    *   Saves a `.blend` file of the scaled model.
+    *   Decimates the mesh to create a low-poly version.
     *   Optionally fills holes in the mesh.
-    *   Performs **Smart UV Project** to automatically generate UV coordinates.
-    *   Exports the processed mesh as an `.obj` file.
-*   **Configurable**: Decimation ratio, Smart UV Project parameters (angle limit, island margin, area weight, etc.), apply scale, fill holes.
-
-### 2. `process_assets.py`
-
-*   **Purpose**: Batch processes multiple 3D assets found in a specified input directory structure. It orchestrates the use of `blender_decimate_unwrap.py`.
-*   **Key Functions**:
-    *   Scans an input folder for subfolders, each assumed to contain one asset's `.obj` file.
+    *   Performs Smart UV Project with configurable parameters.
+    *   Exports the decimated, unwrapped mesh as `_low.obj`.
+*   **Substance Painter Automation (`painter_automate.py` & `lib_remote.py`):**
+    *   Scans for `_low.obj` files processed by Blender.
     *   For each asset:
-        *   Copies the original `.obj` to an output directory as `[asset_name]_high.obj`.
-        *   Invokes Blender in the background to run `blender_decimate_unwrap.py` on the `_high.obj` file.
-        *   Saves the result from Blender as `[asset_name]_low.obj` (decimated and UV unwrapped).
-    *   Handles existing output files with user prompts (Overwrite All / Skip All).
-*   **Configurable**: Input/output base folders, Blender executable path, and all parameters passed to `blender_decimate_unwrap.py`.
-
-### 3. `painter_automate_open_rename_material_bake_export_save.py`
-
-*   **Purpose**: Automates a sequence of operations within Adobe Substance Painter using its remote Python scripting API (requires Painter to be running with `--enable-remote-scripting` and the `lib_remote.py` helper).
-*   **Key Functions (performed sequentially for a given low-poly and high-poly mesh pair)**:
-    1.  **Project Creation**: Creates a new Substance Painter project with the specified low-poly mesh and project settings.
-    2.  **Texture Set Renaming**: Renames the default texture set (e.g., to `M_[mesh_name]`).
-    3.  **Smart Material Application**: Applies a specified Smart Material from a defined shelf location.
-    4.  **Mesh Baking**:
-        *   Configures baking parameters (output size, high-poly mesh path).
-        *   Enables specified bakers (Normal, AO, Curvature, Position, Thickness, etc.).
-        *   Initiates the asynchronous baking process.
-        *   Includes pauses to allow Painter to process.
-    5.  **Texture Export**: Exports textures using a predefined export preset (e.g., "glTF PBR Metal Roughness").
-    6.  **Project Saving**: Saves the Substance Painter project (`.spp` file).
-*   **Configurable**: Paths to low/high-poly meshes, output directory, Smart Material name/location, baking parameters (output size, enabled bakers), export preset.
-
-## Workflow
-
-1.  **Prepare Assets**: Place your original `.obj` 3D models into subfolders within the `INPUT_BASE_FOLDER` defined in `process_assets.py`.
-2.  **Generate Low/High Poly**: Run `python process_assets.py`. This will:
-    *   Create `_high.obj` copies in `OUTPUT_PROCESSED_OBJS_FOLDER`.
-    *   Generate `_low.obj` (decimated, UV unwrapped) versions in the same folder using Blender.
-3.  **Automate Texturing**:
-    *   Ensure Substance Painter is running with remote scripting enabled (`--enable-remote-scripting`).
-    *   Configure `painter_automate_open_rename_material_bake_export_save.py` with the paths to the `_low.obj` and `_high.obj` files generated in step 2, along with other Painter-specific settings.
-    *   Run `python painter_automate_open_rename_material_bake_export_save.py`.
-    *   The script will connect to Painter and perform the configured actions, resulting in exported textures and a saved `.spp` project file.
+        *   Creates a new Substance Painter project using the `_low.obj`.
+        *   Renames the default texture set (e.g., to `M_AssetName`).
+        *   Applies a specified Smart Material.
+        *   Bakes mesh maps using the corresponding `_high.obj` (Normal, AO, Curvature, etc.).
+        *   Saves the Substance Painter project (`.spp`).
+        *   Exports textures using the "glTF PBR Metal Roughness" preset.
+*   **Configuration Driven:** All paths, Blender parameters, and Painter settings are managed in `config.json`.
+*   **Optional Windows Batch File:** For a more streamlined execution of both stages on Windows.
 
 ## Prerequisites
 
-*   Python 3.x
-*   Blender (ensure `BLENDER_EXECUTABLE` path is correctly set in `process_assets.py`)
-*   Adobe Substance Painter
-    *   Must be launched with the `--enable-remote-scripting` flag.
-    *   Requires the `lib_remote.py` (or similar) Python library for Substance Painter remote control (usually provided by Adobe or found in community resources for Painter scripting). This file is not included in this repository and must be obtained separately.
+1.  **Python 3.x:** Ensure Python is installed and in your system's PATH.
+2.  **Blender:** Tested with Blender 4.x. The scripts use Blender's Python API.
+3.  **Adobe Substance 3D Painter:** The version should be compatible with the Python API used in `painter_automate.py` (scripts seem to target a relatively modern API).
+    *   **Crucially for manual Painter launch:** If you are *not* using the provided batch file (which launches Painter automatically), Substance Painter must be launched with remote scripting enabled. You can do this by creating a shortcut or running it from the command line with the `--enable-remote-scripting` flag.
+      For example (Windows): `"C:\Program Files\Adobe\Adobe Substance 3D Painter\Adobe Substance 3D painter.exe" --enable-remote-scripting`
 
-## Configuration
+## Setup
 
-*   Key paths (input/output folders, executable paths, specific asset files for Painter) and processing parameters are defined as constants at the top of each respective script.
-*   Review and modify these configurations to match your environment and desired processing settings before running.
+1.  **Clone the Repository or Download Files:**
+    Get all the files (`process_assets.py`, `blender_decimate_unwrap.py`, `painter_automate.py`, `lib_remote.py`, `config.json`, and optionally the batch file below) into a single directory.
 
-## Usage
+2.  **Configure `config.json`:**
+    This is the most important step. Open `config.json` and edit the paths and parameters to match your system and desired workflow.
 
-1.  Configure the scripts as described above.
-2.  To process meshes with Blender:
-    ```bash
+    ```json
+    {
+      "comment": "this is the config.json file for the python files",
+      "global_paths": {
+        "input_base_folder": "E:\\Path\\To\\Your\\Raw\\OBJs", // Folder containing subfolders for each asset
+        "processed_objs_folder": "E:\\Path\\To\\Output\\Blender\\Meshes", // Where .blend, _high.obj, _low.obj go
+        "painter_output_base_folder": "E:\\Path\\To\\Output\\Painter\\TexturesAndProjects" // Where .spp and textures go
+      },
+      "blender_settings": {
+        "executable_path_windows": "C:\\Program Files\\Blender Foundation\\Blender 4.3\\blender.exe",
+        "executable_path_macos": "/Applications/Blender.app/Contents/MacOS/Blender",
+        "executable_path_linux": "blender", // Or full path if not in PATH
+        "script_params": {
+          "decimate_ratio": 0.1,
+          "sp_angle_degrees": 20.0,
+          "sp_island_margin": 0.000,
+          "sp_area_weight": 0.0,
+          "sp_correct_aspect": true,
+          "sp_scale_to_bounds": false,
+          "sp_margin_method": "SCALED", // Options: 'SCALED', 'ABSOLUTE', 'FRACTION'
+          "sp_rotate_method": "AXIS_ALIGNED_Y", // Options: 'AXIS_ALIGNED', 'AXIS_ALIGNED_X', 'AXIS_ALIGNED_Y'
+          "uv_fill_holes": false,
+          "scale_factor": 100.0, // Factor to scale the model by
+          "apply_scale": true // Apply original model scale before the main scaling
+        }
+      },
+      "painter_settings": {
+        // This path is for reference by the Python script if needed, but the batch file below uses its own hardcoded path to launch Painter.
+        "executable_path_windows": "C:\\Program Files\\Adobe\\Adobe Substance 3D Painter\\Adobe Substance 3D painter.exe",
+        "smart_material_name": "HullTextureColor", // Name of your smart material
+        "smart_material_location": "Yourassets", // Shelf where the smart material is located (e.g., "Shelf", "Yourassets", "Project")
+        "bakers_to_enable": [ // Names of mesh maps to bake
+          "Normal",
+          "AO",
+          "Curvature",
+          "Position",
+          "Thickness",
+          "WorldSpaceNormal"
+        ]
+      }
+    }
+    ```
+    *   **Note on Paths (Windows):** Use double backslashes `\\` or forward slashes `/` for paths in `config.json`.
+
+3.  **Prepare Input Assets:**
+    *   Your raw `.obj` files should be organized into subfolders within the `input_base_folder` specified in `config.json`. Each subfolder represents a single asset.
+    *   Example structure for `input_base_folder`:
+        ```
+        E:\Path\To\Your\Raw\OBJs\
+        ├── Asset001\
+        │   └── model_source.obj
+        ├── Asset002\
+        │   └── another_model.obj
+        └── ...
+        ```
+    *   The `process_assets.py` script will use the subfolder name (e.g., `Asset001`) as the base name for output files.
+
+## Workflow / Usage
+
+You can run the processing stages manually or use the provided Windows batch file for a more automated flow.
+
+### Manual Execution
+
+1.  **Run Blender Processing:**
+    *   Open a terminal or command prompt.
+    *   Navigate to the directory containing the scripts.
+    *   Execute `process_assets.py`:
+        ```bash
+        python process_assets.py
+        ```
+    *   This script will:
+        *   Read your `config.json`.
+        *   Iterate through asset subfolders in `input_base_folder`.
+        *   Copy the `.obj` from each asset's subfolder to `processed_objs_folder` (e.g., `Asset001.obj`).
+        *   Call Blender in the background to run `blender_decimate_unwrap.py` on the copied OBJ.
+        *   Blender will output `Asset001.blend`, `Asset001_high.obj`, and `Asset001_low.obj` into `processed_objs_folder`.
+    *   Check the console output for progress and any errors.
+
+2.  **Run Substance Painter Processing:**
+    *   **Important:** Launch Adobe Substance 3D Painter with remote scripting enabled (see Prerequisites).
+    *   Once Painter is running, open a new terminal or command prompt (or use the existing one).
+    *   Navigate to the directory containing the scripts.
+    *   Execute `painter_automate.py`:
+        ```bash
+        python painter_automate.py
+        ```
+    *   This script will:
+        *   Read your `config.json`.
+        *   Connect to the running Substance Painter instance.
+        *   Scan `processed_objs_folder` for `*_low.obj` files.
+        *   For each `_low.obj` file:
+            *   Automate project creation, material application, baking, saving, and texture export within Painter.
+            *   Outputs (`Asset001.spp`, texture files) will be saved in a subfolder named after the asset (e.g., `Asset001`) inside `painter_output_base_folder`.
+    *   Monitor both the script's console output and the Substance Painter Log window for detailed progress and potential errors.
+
+### Automated Workflow (Windows Batch File)
+
+A Windows batch file (`.bat`) can be used to run both stages sequentially and launch Substance Painter automatically.
+
+1.  **Save the Batch File:**
+    Copy the content below and save it as `run_automation.bat` (or any name with a `.bat` extension) in the *same directory* as your Python scripts and `config.json`.
+
+    ```batch
+    @echo off
+    echo ============================================================
+    echo  STARTING KITBASH AUTOMATION
+    echo ============================================================
+    echo.
+
+    REM Set the directory where the scripts are located
+    set SCRIPT_DIR=%~dp0
+    REM For older systems or if %~dp0 doesn't work as expected, you can hardcode:
+    REM set SCRIPT_DIR=E:\Path\To\Your\Scripts\
+
+    echo Changing directory to: %SCRIPT_DIR%
+    cd /d "%SCRIPT_DIR%"
+
+    echo.
+    echo ============================================================
+    echo  STAGE 1: RUNNING BLENDER PROCESSING (process_assets.py)
+    echo ============================================================
+    echo.
     python process_assets.py
-    ```
-3.  To automate Substance Painter tasks (ensure Painter is running with remote scripting):
-    ```bash
-    python painter_automate_open_rename_material_bake_export_save.py
+    echo.
+    echo STAGE 1 (Blender Processing) COMPLETE.
+    echo Press any key to continue to Substance Painter processing...
+    pause >nul
+    echo.
+
+    echo ============================================================
+    echo  STAGE 2: RUNNING SUBSTANCE PAINTER PROCESSING
+    echo ============================================================
+    echo.
+    REM Ensure this path to Substance Painter is correct for your system.
+    "C:\Program Files\Adobe\Adobe Substance 3D Painter\Adobe Substance 3D painter.exe" --enable-remote-scripting
+    echo Starting Substance Painter and waiting for it to load...
+    REM Wait for 30 seconds for Painter to initialize. Adjust if needed.
+    TIMEOUT /T 30
+    echo Continuing after wait...
+    REM --- IMPORTANT: Ensure the Python script name below matches your file. ---
+    REM The provided Python script is 'painter_automate.py'.
+    REM If your script is named 'substance_painter_batch.py', use that instead.
+    python painter_automate.py
+    REM If your script is named differently, e.g. 'substance_painter_batch.py', change the line above.
+    REM python substance_painter_batch.py
+    echo.
+    echo STAGE 2 (Substance Painter Processing) COMPLETE.
+    echo.
+
+    echo ============================================================
+    echo  AUTOMATION SCRIPT FINISHED
+    echo ============================================================
+    echo The command window will remain open. Close it manually.
+    pause
     ```
 
----
+2.  **Verify Batch File Settings:**
+    *   **`SCRIPT_DIR`**: The line `set SCRIPT_DIR=%~dp0` should automatically set the script directory correctly if the batch file is in the same folder as the Python scripts. If you encounter issues, you can uncomment and hardcode the path: `REM set SCRIPT_DIR=E:\Path\To\Your\Scripts\`.
+    *   **Substance Painter Path**: Ensure the path `"C:\Program Files\Adobe\Adobe Substance 3D Painter\Adobe Substance 3D painter.exe"` in the batch file matches your Substance Painter installation.
+    *   **Painter Script Name**: The batch file currently calls `python painter_automate.py`. If your Painter automation script is named differently (e.g., `substance_painter_batch.py` as suggested by the original batch file content), update this line in the batch file.
+    *   **Timeout**: The `TIMEOUT /T 30` gives Painter 30 seconds to load. If your system is slower or Painter takes longer to initialize, you might need to increase this value.
 
-This pipeline can significantly speed up repetitive tasks in 3D asset production, especially for projects involving many similar assets requiring decimation, UV unwrapping, and standardized texturing.
+3.  **Run the Batch File:**
+    *   Ensure your `config.json` is correctly configured.
+    *   Double-click the `run_automation.bat` file.
+    *   The script will execute `process_assets.py` first.
+    *   It will then pause, waiting for you to press any key.
+    *   After you press a key, it will launch Substance Painter with remote scripting enabled, wait for a bit, and then run `painter_automate.py` (or the script name you specified).
+    *   The command window will remain open at the end; you can close it manually.
+
+## File Descriptions
+
+*   **`config.json`**: Main configuration file for all paths and processing parameters. **User must edit this.**
+*   **`process_assets.py`**: Orchestrator script for the Blender part. It finds input OBJs, copies them, and calls Blender with `blender_decimate_unwrap.py`.
+*   **`blender_decimate_unwrap.py`**: The Blender Python script that performs mesh operations (scaling, decimation, UV unwrapping, high/low poly export).
+*   **`painter_automate.py`**: Main Python script for Substance Painter automation. Connects to Painter and orchestrates project creation, material application, baking, saving, and export.
+    *   *(Note: The batch file originally referred to `substance_painter_batch.py`. Ensure the name called in the batch file matches this script if you use it.)*
+*   **`lib_remote.py`**: A library module used by `painter_automate.py` to communicate with Substance Painter's remote scripting server.
+*   **`run_automation.bat` (Optional):** A Windows batch file to automate running both the Blender and Substance Painter processing stages.
+
+## Troubleshooting & Notes
+
+*   **Permissions:** Ensure the scripts have permission to read from input folders and write to output folders.
+*   **Paths in `config.json`:** Double-check all paths. Incorrect paths are a common source of errors. Use `\\` or `/` for Windows paths.
+*   **Substance Painter Version:** The Painter Python API can change between versions. If you encounter errors in `painter_automate.py` related to API calls, you might need to adjust them for your Painter version. Consult the Substance Painter Python API documentation.
+*   **Blender Version:** Similarly, Blender's Python API can have changes, though it's generally more stable for the operations used here.
+*   **Smart Material Not Found:** If `painter_automate.py` reports it cannot find your smart material:
+    *   Verify `smart_material_name` and `smart_material_location` in `config.json`.
+    *   The `smart_material_location` refers to the shelf in Painter (e.g., "shelf" for default assets, "yourassets" or "starterassets" for user-imported ones, or "project" if it's specific to a project). Check Painter's UI for the correct shelf name.
+    *   The script includes a fallback search with wildcards, but an exact match is preferred.
+*   **Long Waits:** The `time.sleep()` calls in `painter_automate.py` and `TIMEOUT` in the batch file are there to give Painter time to process commands. If operations seem to fail because Painter hasn't finished the previous step, you might need to increase these wait times.
+*   **Error Messages:** Pay close attention to error messages in both the Python script console output and the Substance Painter Log window (usually accessible via `Window > Log` in Painter).
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details (assuming you will create a separate LICENSE.md file with the MIT license text).
